@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Rutinitas Santri - MTs Darul Ma'arif</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter & Amiri (Nuansa Islami) -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        arabic: ['Amiri', 'serif'],
+                    },
+                    colors: {
+                        madrasah: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        },
+                        gold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Pengaturan Scrollbar Halus */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Animasi Halus */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+
+        /* Aturan Khusus Cetak Laporan Resmi (Print Mode) */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+            }
+            th, td {
+                border: 1px solid #333 !important;
+                padding: 6px 8px !important;
+                font-size: 11px !important;
+            }
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Switcher Bar (Navigasi Mode Santri vs Mode Admin) -->
+    <header class="bg-madrasah-900 text-white shadow-md sticky top-0 z-40 no-print">
+        <div class="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-madrasah-900 font-bold shadow">
+                    <i class="fa-solid fa-mosque text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm sm:text-base leading-tight tracking-tight">MTs Darul Ma'arif</h1>
+                    <p class="text-[11px] text-madrasah-100">Sistem Monitoring Rutinitas Santri</p>
+                </div>
+            </div>
+
+            <!-- Role Switcher -->
+            <div class="flex items-center bg-madrasah-800 p-1 rounded-xl border border-madrasah-700">
+                <button id="btn-mode-santri" onclick="switchAppMode('santri')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-white text-madrasah-900 shadow-sm">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span>Portal Santri</span>
+                </button>
+                <button id="btn-mode-admin" onclick="switchAppMode('admin')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-madrasah-100 hover:text-white">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Admin / Guru</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notification Container (Pengganti alert()) -->
+    <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-xs w-full pointer-events-none no-print"></div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 flex flex-col items-center justify-start p-0 sm:p-4 md:p-6">
+
+        <!-- ===================================================================== -->
+        <!-- 1. PORTAL SANTRI (MOBILE-FIRST FRAME)                                 -->
+        <!-- ===================================================================== -->
+        <div id="view-santri" class="w-full max-w-md bg-white sm:rounded-3xl sm:shadow-xl sm:border border-slate-200 overflow-hidden min-h-[calc(100vh-56px)] sm:min-h-[740px] flex flex-col relative">
+
+            <!-- A. SCREEN: REGISTRASI AWAL SANTRI (KUNJUNGAN PERTAMA) -->
+            <section id="santri-register-screen" class="hidden flex-1 flex flex-col p-6 animate-fade-in">
+                <div class="text-center mb-6 pt-2">
+                    <div class="w-16 h-16 mx-auto bg-madrasah-50 border-2 border-madrasah-500 rounded-2xl flex items-center justify-center text-madrasah-700 mb-3 shadow-sm">
+                        <i class="fa-solid fa-book-quran text-3xl"></i>
+                    </div>
+                    <span class="inline-block px-3 py-1 bg-gold-400/20 text-gold-600 text-xs font-bold rounded-full mb-1">Pendaftaran Santri Baru</span>
+                    <h2 class="text-xl font-extrabold text-slate-800">Assalamu'alaikum, Santri!</h2>
+                    <p class="text-xs text-slate-500 mt-1">Lengkapi biodata awal berikut untuk membuat akun absensi harian MTs Darul Ma'arif.</p>
+                </div>
+
+                <form id="form-register" onsubmit="handleRegister(event)" class="space-y-3.5 flex-1">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Lengkap Santri <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="reg-nama" required placeholder="Contoh: Ahmad Fauzan" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Kelas <span class="text-red-500">*</span></label>
+                            <select id="reg-kelas" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                                <option value="">Pilih Kelas</option>
+                                <option value="VII A">VII A</option>
+                                <option value="VII B">VII B</option>
+                                <option value="VIII A">VIII A</option>
+                                <option value="VIII B">VIII B</option>
+                                <option value="IX A">IX A</option>
+                                <option value="IX B">IX B</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">NISN / ID (Opsional)</label>
+                            <input type="text" id="reg-nisn" placeholder="0091234567" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">No. HP / WhatsApp Aktif <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-emerald-600"><i class="fa-brands fa-whatsapp text-base"></i></span>
+                            <input type="tel" id="reg-wa" required placeholder="081234567890" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Digunakan sebagai username saat login berikutnya.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Alamat Email <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-envelope"></i></span>
+                            <input type="email" id="reg-email" required placeholder="santri@darulmaarif.sch.id" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Orang Tua / Wali <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-people-roof"></i></span>
+                            <input type="text" id="reg-ortu" required placeholder="Bpk. H. Sulaiman" class="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-3 bg-gradient-to-r from-madrasah-600 to-madrasah-700 hover:from-madrasah-700 hover:to-madrasah-800 text-white font-bold rounded-xl shadow-md shadow-madrasah-600/20 transition flex items-center justify-center gap-2">
+                            <span>Simpan Data & Buat Akun</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-5 pt-4 border-t border-slate-100 text-center">
+                    <p class="text-xs text-slate-500">Sudah pernah mendaftar sebelumnya?</p>
+                    <button onclick="showSantriScreen('login')" class="mt-1 text-sm font-bold text-madrasah-700 hover:underline">
+                        Masuk ke Halaman Login &rarr;
+                    </button>
+                </div>
+            </section>
+
+            <!-- B. SCREEN: KARTU KONFIRMASI AKUN BARU & PASSWORD DEFAULT -->
+            <section id="santri-reg-success-screen" class="hidden flex-1 flex flex-col justify-center p-6 animate-fade-in bg-madrasah-50/50">
+                <div class="bg-white rounded-3xl p-6 shadow-lg border border-madrasah-100 text-center">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h2 class="text-xl font-extrabold text-slate-800">Pendaftaran Berhasil!</h2>
+                    <p class="text-xs text-slate-500 mt-1">Simpan informasi akun di bawah ini untuk login pada kunjungan berikutnya.</p>
+
+                    <div class="mt-5 bg-slate-50 rounded-2xl p-4 text-left border border-slate-200 space-y-2.5">
+                        <div>
+                            <span class="text-[11px] text-slate-400 block">Nama Santri / Kelas</span>
+                            <span id="card-reg-nama" class="text-sm font-bold text-slate-800">-</span>
+                        </div>
+                        <div>
+                            <span class="text-[11px] text-slate-400 block">Username (No. WA / Email)</span>
+                            <span id="card-reg-user" class="text-sm font-semibold text-madrasah-700">-</span>
+                        </div>
+                        <div class="pt-2 border-t border-dashed border-slate-200 flex items-center justify-between">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block">Password Default Aplikasi</span>
+                                <span id="card-reg-pass" class="text-base font-mono font-extrabold text-amber-600 tracking-wider">santri123</span>
+                            </div>
+                            <button onclick="copyDefaultPassword()" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i> Salin
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-blue-50 rounded-xl text-[11px] text-blue-700 text-left flex gap-2">
+                        <i class="fa-solid fa-circle-info mt-0.5"></i>
+                        <span>Demi keamanan, Anda akan disarankan mengganti password default ini saat masuk ke dashboard.</span>
+                    </div>
+
+                    <button onclick="proceedAfterRegister()" class="mt-6 w-full py-3 bg-madrasah-700 hover:bg-madrasah-800 text-white font-bold rounded-xl shadow transition">
+                        Lanjut Masuk ke Aplikasi
+                    </button>
+                </div>
+            </section>
+
+            <!-- C. SCREEN: LOGIN SANTRI (KUNJUNGAN KEDUA & SETERUSNYA) -->
+            <section id="santri-login-screen" class="hidden flex-1 flex flex-col justify-between p-6 animate-fade-in">
+                <div>
+                    <div class="text-center mt-4 mb-8">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-madrasah-600 to-madrasah-800 rounded-2xl flex items-center justify-center text-white mb-3 shadow-lg shadow-madrasah-600/20">
+                            <i class="fa-solid fa-mosque text-3xl text-gold-400"></i>
+                        </div>
+                        <h2 class="text-xl font-extrabold text-slate-800">Selamat Datang Kembali</h2>
+                        <p class="text-xs text-slate-500 mt-1">Masuk untuk mencatat absensi rutinitas harian Anda</p>
+                    </div>
+
+                    <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nomor WhatsApp atau Email</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-id-card"></i></span>
+                                <input type="text" id="login-identifier" required placeholder="081234567890 atau email" class="w-full pl-10 pr-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="block text-xs font-semibold text-slate-700">Password</label>
+                                <span class="text-[11px] text-slate-400">Default: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-semibold">santri123</code></span>
+                            </div>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                                <input type="password" id="login-password" required placeholder="Masukkan password Anda" class="w-full pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white transition">
+                                <button type="button" onclick="togglePasswordVisibility('login-password', 'eye-login')" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600">
+                                    <i id="eye-login" class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-madrasah-600 to-madrasah-700 hover:from-madrasah-700 hover:to-madrasah-800 text-white font-bold rounded-xl shadow-md shadow-madrasah-600/20 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>Masuk Sekarang</span>
+                        </button>
+                    </form>
+
+                    <!-- Demo Quick Fill untuk Pengujian -->
+                    <div class="mt-6 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
+                        <p class="text-[11px] font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-amber-500"></i> Akses Cepat Akun Contoh (Demo):
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="fillDemoLogin('081234567890', 'santri123')" class="text-xs bg-white hover:bg-madrasah-50 text-madrasah-800 border border-slate-200 px-2.5 py-1.5 rounded-lg font-medium transition">
+                                Ahmad Fauzan (VIII A)
+                            </button>
+                            <button type="button" onclick="fillDemoLogin('085678901234', 'santri123')" class="text-xs bg-white hover:bg-madrasah-50 text-madrasah-800 border border-slate-200 px-2.5 py-1.5 rounded-lg font-medium transition">
+                                Siti Aisyah (VII B)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+                    <p class="text-xs text-slate-500">Santri baru belum punya akun?</p>
+                    <button onclick="showSantriScreen('register')" class="mt-1 text-sm font-bold text-madrasah-700 hover:underline">
+                        + Daftar Data Santri Baru
+                    </button>
+                </div>
+            </section>
+
+            <!-- D. SCREEN: DASHBOARD UTAMA SANTRI -->
+            <section id="santri-dashboard-screen" class="hidden flex-1 flex flex-col bg-slate-50 animate-fade-in">
+                <!-- Header Profil Santri -->
+                <div class="bg-gradient-to-br from-madrasah-700 via-madrasah-800 to-madrasah-900 text-white p-5 rounded-b-3xl shadow-md">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur border border-white/20 flex items-center justify-center text-xl font-bold text-gold-400">
+                                <span id="dash-avatar">AF</span>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 id="dash-nama" class="font-bold text-base leading-tight">Nama Santri</h2>
+                                    <span id="dash-kelas" class="px-2 py-0.5 bg-gold-500 text-madrasah-950 text-[10px] font-extrabold rounded-md">VIII A</span>
+                                </div>
+                                <p id="dash-wa" class="text-xs text-madrasah-100 mt-0.5"><i class="fa-brands fa-whatsapp mr-1"></i>08123456789</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="openChangePasswordModal()" title="Ganti Password" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs transition">
+                                <i class="fa-solid fa-key"></i>
+                            </button>
+                            <button onclick="handleSantriLogout()" title="Keluar" class="w-8 h-8 rounded-xl bg-red-500/20 hover:bg-red-500/40 text-red-100 flex items-center justify-center text-xs transition">
+                                <i class="fa-solid fa-right-from-bracket"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Banner Saran Ganti Password Default (Muncul jika masih pakai 'santri123') -->
+                    <div id="default-pass-warning" class="hidden mt-4 bg-amber-400/20 border border-amber-300/40 rounded-2xl p-3 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-300 text-base"></i>
+                            <div class="text-[11px] leading-tight text-amber-50">
+                                <strong class="block text-amber-200">Password Masih Default!</strong>
+                                Disarankan segera mengganti password baru demi keamanan akun.
+                            </div>
+                        </div>
+                        <button onclick="openChangePasswordModal()" class="shrink-0 px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-madrasah-950 font-bold text-[11px] rounded-lg shadow-sm transition">
+                            Ganti
+                        </button>
+                    </div>
+
+                    <!-- Progress Bar Harian -->
+                    <div class="mt-4 bg-black/20 rounded-2xl p-3.5">
+                        <div class="flex justify-between items-center text-xs mb-1.5">
+                            <span id="dash-date" class="text-madrasah-100 font-medium">Senin, 16 Nov 2026</span>
+                            <span id="dash-progress-text" class="font-bold text-gold-400">0 / 8 Selesai</span>
+                        </div>
+                        <div class="w-full bg-white/15 h-2.5 rounded-full overflow-hidden">
+                            <div id="dash-progress-bar" class="bg-gradient-to-r from-gold-400 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-Tab Navigasi Santri (Daftar Rutinitas vs Riwayat Saya) -->
+                <div class="px-4 pt-4">
+                    <div class="grid grid-cols-2 bg-slate-200/80 p-1 rounded-xl">
+                        <button id="tab-santri-kegiatan" onclick="switchSantriTab('kegiatan')" class="py-2 rounded-lg text-xs font-bold bg-white text-madrasah-800 shadow-sm transition">
+                            <i class="fa-solid fa-list-check mr-1.5"></i>Rutinitas Hari Ini
+                        </button>
+                        <button id="tab-santri-riwayat" onclick="switchSantriTab('riwayat')" class="py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-800 transition">
+                            <i class="fa-solid fa-clock-rotate-left mr-1.5"></i>Riwayat Absenku
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Konten Tab 1: Daftar Kegiatan Rutinitas -->
+                <div id="content-santri-kegiatan" class="p-4 space-y-2.5 flex-1 overflow-y-auto">
+                    <!-- Di-render dinamis oleh JS -->
+                </div>
+
+                <!-- Konten Tab 2: Riwayat Absensi Santri -->
+                <div id="content-santri-riwayat" class="hidden p-4 space-y-3 flex-1 overflow-y-auto">
+                    <!-- Di-render dinamis oleh JS -->
+                </div>
+            </section>
+        </div>
+
+
+        <!-- ===================================================================== -->
+        <!-- 2. PORTAL ADMIN / GURU (BACK-END MANAGEMENT & LAPORAN CETAK)          -->
+        <!-- ===================================================================== -->
+        <div id="view-admin" class="hidden w-full max-w-6xl bg-white sm:rounded-3xl sm:shadow-xl sm:border border-slate-200 overflow-hidden min-h-[calc(100vh-80px)] flex flex-col">
+
+            <!-- A. ADMIN LOGIN GATE -->
+            <section id="admin-login-screen" class="flex-1 flex flex-col items-center justify-center p-6 animate-fade-in">
+                <div class="w-full max-w-sm bg-slate-50 p-6 rounded-3xl border border-slate-200 shadow-sm text-center">
+                    <div class="w-14 h-14 bg-madrasah-800 text-gold-400 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h2 class="text-lg font-extrabold text-slate-800">Login Admin / Wali Kelas</h2>
+                    <p class="text-xs text-slate-500 mt-1">MTs Darul Ma'arif Back-End Panel</p>
+
+                    <form onsubmit="handleAdminLogin(event)" class="mt-5 space-y-3 text-left">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Password Admin</label>
+                            <input type="password" id="admin-pass-input" required placeholder="Masukkan password admin..." class="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                            <p class="text-[11px] text-slate-400 mt-1">Password default demo: <code class="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700 font-bold">admin123</code></p>
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-madrasah-800 hover:bg-madrasah-900 text-white font-bold rounded-xl text-sm transition shadow">
+                            Masuk Panel Admin
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- B. ADMIN DASHBOARD PANEL -->
+            <section id="admin-dashboard-screen" class="hidden flex-1 flex flex-col animate-fade-in">
+                <!-- Header Admin -->
+                <div class="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-4 no-print">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 bg-gold-500 text-slate-950 text-[10px] font-extrabold rounded uppercase">Admin Panel</span>
+                            <h2 class="font-bold text-base sm:text-lg">Rekap & Manajemen Rutinitas Santri</h2>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">Kelola jenis kegiatan harian, pantau GPS & foto bukti, serta cetak laporan madrasah.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="resetDemoDatabase()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-medium transition" title="Kembalikan data contoh awal">
+                            <i class="fa-solid fa-rotate mr-1"></i> Reset Data Demo
+                        </button>
+                        <button onclick="handleAdminLogout()" class="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-xl text-xs font-semibold transition">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistik Ringkas -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 sm:px-6 bg-slate-50 border-b border-slate-200 no-print">
+                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs text-slate-500 block">Total Santri Terdaftar</span>
+                        <span id="stat-total-santri" class="text-2xl font-extrabold text-madrasah-700 mt-0.5 block">0</span>
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs text-slate-500 block">Absensi Masuk Hari Ini</span>
+                        <span id="stat-absen-hari-ini" class="text-2xl font-extrabold text-emerald-600 mt-0.5 block">0</span>
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs text-slate-500 block">Total Seluruh Log Absen</span>
+                        <span id="stat-total-log" class="text-2xl font-extrabold text-blue-600 mt-0.5 block">0</span>
+                    </div>
+                    <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <span class="text-xs text-slate-500 block">Rutinitas Aktif</span>
+                        <span id="stat-total-rutinitas" class="text-2xl font-extrabold text-amber-600 mt-0.5 block">0</span>
+                    </div>
+                </div>
+
+                <!-- Navigasi Tab Admin -->
+                <div class="px-4 sm:px-6 pt-3 border-b border-slate-200 flex gap-2 overflow-x-auto no-print">
+                    <button id="admin-tab-laporan" onclick="switchAdminTab('laporan')" class="px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-madrasah-700 text-madrasah-800 whitespace-nowrap">
+                        <i class="fa-solid fa-print mr-1.5"></i>Rekap & Cetak Laporan
+                    </button>
+                    <button id="admin-tab-rutinitas" onclick="switchAdminTab('rutinitas')" class="px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
+                        <i class="fa-solid fa-list-check mr-1.5"></i>Kelola Rutinitas Harian
+                    </button>
+                    <button id="admin-tab-santri" onclick="switchAdminTab('santri')" class="px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
+                        <i class="fa-solid fa-users mr-1.5"></i>Data Santri & Reset Password
+                    </button>
+                </div>
+
+                <!-- TAB ADMIN 1: REKAP & CETAK LAPORAN -->
+                <div id="admin-content-laporan" class="p-4 sm:p-6 flex-1 flex flex-col">
+                    <!-- Filter & Tombol Aksi -->
+                    <div class="flex flex-wrap items-end justify-between gap-3 mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-200 no-print">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Tanggal</label>
+                                <input type="date" id="filter-tanggal" onchange="renderAdminReports()" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Filter Kelas</label>
+                                <select id="filter-kelas" onchange="renderAdminReports()" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                                    <option value="ALL">Semua Kelas</option>
+                                    <option value="VII A">VII A</option>
+                                    <option value="VII B">VII B</option>
+                                    <option value="VIII A">VIII A</option>
+                                    <option value="VIII B">VIII B</option>
+                                    <option value="IX A">IX A</option>
+                                    <option value="IX B">IX B</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1">Cari Nama Santri</label>
+                                <input type="text" id="filter-nama" oninput="renderAdminReports()" placeholder="Ketik nama..." class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                            </div>
+                            <div class="pt-4">
+                                <button onclick="resetReportFilters()" class="px-3 py-2 text-xs text-slate-600 hover:text-slate-900 font-semibold underline">Reset Filter</button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button onclick="exportToCSV()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-file-excel"></i> Export CSV / Excel
+                            </button>
+                            <button onclick="window.print()" class="px-4 py-2.5 bg-madrasah-800 hover:bg-madrasah-900 text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-print"></i> Cetak Laporan Resmi
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- AREA CETAK RESMI (KOP SURAT + TABEL + TANDA TANGAN) -->
+                    <div id="print-area" class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
+                        <!-- Kop Surat Resmi (Tampil jelas saat Print, dan rapi di layar) -->
+                        <div class="border-b-4 border-double border-slate-800 pb-4 mb-5 flex items-center justify-between gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-full border-2 border-madrasah-800 flex items-center justify-center text-madrasah-800 shrink-0">
+                                    <i class="fa-solid fa-mosque text-3xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-bold uppercase tracking-widest text-madrasah-800">YAYASAN PENDIDIKAN ISLAM DARUL MA'ARIF</p>
+                                    <h3 class="text-lg sm:text-xl font-extrabold uppercase tracking-tight text-slate-900">MADRASAH TSANAWIYAH (MTs) DARUL MA'ARIF</h3>
+                                    <p class="text-xs text-slate-600">Jl. Pendidikan Pesantren No. 45, Kec. Darul Ma'arif | Telp: (021) 555-0192 | Email: info@mtsdarulmaarif.sch.id</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mb-4">
+                            <h4 class="text-sm sm:text-base font-extrabold uppercase underline">LAPORAN REKAPITULASI ABSENSI RUTINITAS HARIAN SANTRI</h4>
+                            <p id="print-subtitle" class="text-xs text-slate-600 mt-0.5">Periode: Semua Tanggal | Kelas: Semua Kelas</p>
+                        </div>
+
+                        <!-- Tabel Data Absensi -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700 text-xs uppercase">
+                                        <th class="p-3 border border-slate-200 w-10 text-center">No</th>
+                                        <th class="p-3 border border-slate-200">Waktu & Tanggal</th>
+                                        <th class="p-3 border border-slate-200">Nama Santri</th>
+                                        <th class="p-3 border border-slate-200 text-center">Kelas</th>
+                                        <th class="p-3 border border-slate-200">Kegiatan Rutinitas</th>
+                                        <th class="p-3 border border-slate-200">Catatan Santri</th>
+                                        <th class="p-3 border border-slate-200 text-center">Lokasi GPS</th>
+                                        <th class="p-3 border border-slate-200 text-center">Bukti Foto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-report-tbody" class="text-xs divide-y divide-slate-200">
+                                    <!-- Diisi via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Blok Tanda Tangan Kepala Madrasah (Muncul saat Print) -->
+                        <div class="hidden print:flex justify-between mt-10 pt-4 text-xs">
+                            <div class="text-center w-56">
+                                <p>Mengetahui,</p>
+                                <p class="font-bold">Kepala MTs Darul Ma'arif</p>
+                                <div class="h-16"></div>
+                                <p class="font-bold underline">KH. Drs. Ahmad Mudzakkir, M.Pd.I</p>
+                                <p>NIP. 19750817 200501 1 004</p>
+                            </div>
+                            <div class="text-center w-56">
+                                <p id="print-date-footer">Dicetak pada: 16 November 2026</p>
+                                <p class="font-bold">Koordinator Kesiswaan / Wali Kelas</p>
+                                <div class="h-16"></div>
+                                <p class="font-bold underline">Ust. Muhammad Ridwan, S.Pd</p>
+                                <p>NIP. 19880412 201402 1 002</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB ADMIN 2: KELOLA RUTINITAS HARIAN (CRUD) -->
+                <div id="admin-content-rutinitas" class="hidden p-4 sm:p-6 flex-1">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Form Tambah / Edit Rutinitas -->
+                        <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 h-fit">
+                            <h3 id="form-rutinitas-title" class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-plus-circle text-madrasah-600"></i> Tambah Kegiatan Rutinitas Baru
+                            </h3>
+                            <form id="form-rutinitas" onsubmit="handleSaveRoutine(event)" class="space-y-3">
+                                <input type="hidden" id="edit-routine-id">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Kegiatan <span class="text-red-500">*</span></label>
+                                    <input type="text" id="routine-title" required placeholder="Contoh: Shalat Dhuha / Hafalan Juz 30" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2.5">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Kategori</label>
+                                        <select id="routine-category" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                                            <option value="Ibadah Wajib">Ibadah Wajib</option>
+                                            <option value="Ibadah Sunnah">Ibadah Sunnah</option>
+                                            <option value="Al-Qur'an">Al-Qur'an</option>
+                                            <option value="Adab & Bakti">Adab & Bakti</option>
+                                            <option value="Belajar">Belajar</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Waktu Anjuran</label>
+                                        <input type="text" id="routine-time" required placeholder="04:30 - 05:30" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi Singkat</label>
+                                    <input type="text" id="routine-desc" placeholder="Contoh: Dilaksanakan berjamaah di masjid/musholla" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                                </div>
+                                <div class="flex items-center gap-2 pt-1">
+                                    <input type="checkbox" id="routine-require-photo" checked class="rounded text-madrasah-600 focus:ring-madrasah-500">
+                                    <label for="routine-require-photo" class="text-xs text-slate-700 font-medium">Wajib menyertakan bukti foto & GPS</label>
+                                </div>
+                                <div class="flex gap-2 pt-2">
+                                    <button type="submit" class="flex-1 py-2.5 bg-madrasah-700 hover:bg-madrasah-800 text-white font-bold rounded-xl text-xs transition shadow-sm">
+                                        Simpan Kegiatan
+                                    </button>
+                                    <button type="button" id="btn-cancel-edit-routine" onclick="resetRoutineForm()" class="hidden px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs transition">
+                                        Batal
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Daftar Rutinitas yang Tersedia -->
+                        <div class="lg:col-span-2">
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-sm text-slate-800">Daftar Rutinitas Harian Aktif (Sinkron ke HP Santri)</h3>
+                                <span class="text-xs text-slate-500">Klik tombol untuk ubah status/hapus</span>
+                            </div>
+                            <div id="admin-routines-list" class="space-y-2.5">
+                                <!-- Diisi via JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB ADMIN 3: DATA SANTRI & RESET PASSWORD -->
+                <div id="admin-content-santri" class="hidden p-4 sm:p-6 flex-1">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="font-bold text-sm text-slate-800">Database Biodata Santri Terdaftar</h3>
+                            <p class="text-xs text-slate-500">Admin dapat mereset password santri yang lupa kembali ke <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">santri123</code>.</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700 text-xs uppercase">
+                                    <th class="p-3 border-b border-slate-200">Nama Santri</th>
+                                    <th class="p-3 border-b border-slate-200">Kelas</th>
+                                    <th class="p-3 border-b border-slate-200">No. WhatsApp</th>
+                                    <th class="p-3 border-b border-slate-200">Email</th>
+                                    <th class="p-3 border-b border-slate-200">Orang Tua / Wali</th>
+                                    <th class="p-3 border-b border-slate-200">Status Password</th>
+                                    <th class="p-3 border-b border-slate-200 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-santri-tbody" class="text-xs divide-y divide-slate-200">
+                                <!-- Diisi via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: FORM ABSENSI KEGIATAN (KAMERA FOTO + GPS REAL-TIME)          -->
+    <!-- ===================================================================== -->
+    <div id="modal-absensi" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-fade-in max-h-[92vh] flex flex-col">
+            <!-- Header Modal -->
+            <div class="bg-madrasah-800 text-white px-5 py-4 flex items-center justify-between">
+                <div>
+                    <span id="modal-absen-kategori" class="text-[10px] uppercase tracking-wider bg-gold-500 text-madrasah-950 font-extrabold px-2 py-0.5 rounded">Ibadah Wajib</span>
+                    <h3 id="modal-absen-judul" class="font-bold text-base mt-1">Shalat Subuh Berjamaah</h3>
+                </div>
+                <button onclick="closeAbsensiModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Body Modal -->
+            <form id="form-submit-absensi" onsubmit="handleSubmitAbsensi(event)" class="p-5 space-y-4 overflow-y-auto flex-1">
+                <input type="hidden" id="absen-routine-id">
+
+                <!-- 1. STATUS GPS REAL-TIME -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot text-red-500"></i> Titik Lokasi GPS Aktif
+                        </span>
+                        <button type="button" onclick="fetchGPSLocation()" class="text-[11px] font-bold text-madrasah-700 hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-rotate"></i> Perbarui GPS
+                        </button>
+                    </div>
+                    <div id="gps-status-box" class="text-xs text-slate-600 flex items-center gap-2">
+                        <i class="fa-solid fa-spinner fa-spin text-madrasah-600"></i>
+                        <span>Mendeteksi koordinat satelit GPS...</span>
+                    </div>
+                    <input type="hidden" id="absen-lat">
+                    <input type="hidden" id="absen-lng">
+                </div>
+
+                <!-- 2. BUKTI FOTO KEGIATAN -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        Bukti Foto Kegiatan <span class="text-red-500">*</span>
+                    </label>
+
+                    <!-- Area Preview Foto / Tombol Kamera -->
+                    <div id="photo-upload-area" class="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center bg-slate-50 hover:bg-slate-100/70 transition relative">
+                        <input type="file" id="absen-photo-input" accept="image/*" capture="environment" onchange="handlePhotoCapture(event)" class="hidden">
+
+                        <div id="photo-placeholder" class="py-4 cursor-pointer" onclick="document.getElementById('absen-photo-input').click()">
+                            <div class="w-12 h-12 rounded-full bg-madrasah-100 text-madrasah-700 flex items-center justify-center mx-auto mb-2 text-xl">
+                                <i class="fa-solid fa-camera"></i>
+                            </div>
+                            <p class="text-xs font-bold text-slate-700">Ambil Foto Kamera / Pilih Galeri</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Otomatis dikompresi agar hemat kuota</p>
+                        </div>
+
+                        <div id="photo-preview-container" class="hidden relative">
+                            <img id="photo-preview-img" src="" alt="Preview Bukti" class="w-full h-48 object-cover rounded-xl shadow-sm">
+                            <button type="button" onclick="document.getElementById('absen-photo-input').click()" class="mt-2.5 px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg shadow">
+                                <i class="fa-solid fa-camera-rotate mr-1"></i> Foto Ulang
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. CATATAN KEGIATAN -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Tambahan (Opsional)</label>
+                    <textarea id="absen-notes" rows="2" placeholder="Contoh: Berjamaah di Masjid Al-Ikhlas / Membaca QS. Al-Mulk ayat 1-30..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-madrasah-500 focus:bg-white"></textarea>
+                </div>
+
+                <button type="submit" id="btn-submit-absen" class="w-full py-3.5 bg-gradient-to-r from-madrasah-600 to-madrasah-700 hover:from-madrasah-700 hover:to-madrasah-800 text-white font-bold rounded-xl shadow-lg shadow-madrasah-600/20 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Kirim Laporan Absensi</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: GANTI PASSWORD BARU (SARAN DARI PASSWORD DEFAULT)            -->
+    <!-- ===================================================================== -->
+    <div id="modal-change-password" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 animate-fade-in">
+            <div class="flex items-center justify-between mb-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <h3 class="text-lg font-extrabold text-slate-800">Perbarui Password Akun</h3>
+            <p class="text-xs text-slate-500 mt-1">Ganti password default (<code class="font-bold text-slate-700">santri123</code>) dengan password pribadi yang mudah diingat namun aman.</p>
+
+            <form onsubmit="handleUpdatePassword(event)" class="mt-4 space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Password Baru</label>
+                    <input type="password" id="new-santri-pass" required minlength="5" placeholder="Minimal 5 karakter" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Konfirmasi Password Baru</label>
+                    <input type="password" id="confirm-santri-pass" required minlength="5" placeholder="Ketik ulang password baru" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-madrasah-600">
+                </div>
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition">
+                        Nanti Saja
+                    </button>
+                    <button type="submit" class="flex-1 py-2.5 bg-madrasah-700 hover:bg-madrasah-800 text-white font-bold rounded-xl text-xs transition shadow">
+                        Simpan Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: ZOOM BUKTI FOTO (UNTUK ADMIN & RIWAYAT SANTRI)               -->
+    <!-- ===================================================================== -->
+    <div id="modal-photo-viewer" onclick="closePhotoViewer()" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+        <div onclick="event.stopPropagation()" class="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in">
+            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+                <span id="viewer-title" class="text-xs font-bold">Bukti Foto Kegiatan</span>
+                <button onclick="closePhotoViewer()" class="text-slate-300 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="bg-black flex items-center justify-center">
+                <img id="viewer-img" src="" alt="Bukti Foto" class="max-h-[65vh] w-auto object-contain">
+            </div>
+            <div class="p-4 bg-white text-xs space-y-1">
+                <p id="viewer-meta" class="font-bold text-slate-800">-</p>
+                <p id="viewer-gps" class="text-slate-500">-</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ===================================================================== -->
+    <!-- JAVASCRIPT LOGIC & SIMULASI DATABASE (LOCALSTORAGE)                   -->
+    <!-- ===================================================================== -->
+    <script>
+        // Kunci Penyimpanan Database Lokal
+        const DB_KEYS = {
+            SANTRI: 'mts_dm_santri_v1',
+            ROUTINES: 'mts_dm_routines_v1',
+            LOGS: 'mts_dm_logs_v1',
+            SESSION_SANTRI: 'mts_dm_session_santri_v1',
+            SESSION_ADMIN: 'mts_dm_session_admin_v1'
+        };
+
+        const DEFAULT_SANTRI_PASSWORD = 'santri123';
+        const DEFAULT_ADMIN_PASSWORD = 'admin123';
+
+        // State Sementara
+        let currentPhotoBase64 = '';
+        let newlyRegisteredSantri = null;
+
+        // Helper: Mendapatkan Tanggal Hari Ini Format YYYY-MM-DD (Lokal)
+        function getTodayISO() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            return new Date(now - offset).toISOString().split('T')[0];
+        }
+
+        // Helper: Format Tanggal Indonesia
+        function formatTanggalIndo(dateStr) {
+            const opsi = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            return new Date(dateStr).toLocaleDateString('id-ID', opsi);
+        }
+
+        // Helper: Notifikasi Toast Cantik (Pengganti alert)
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-800 text-white border-emerald-600',
+                warning: 'bg-amber-600 text-white border-amber-400',
+                error: 'bg-red-700 text-white border-red-500',
+                info: 'bg-slate-800 text-white border-slate-600'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                warning: 'fa-triangle-exclamation',
+                error: 'fa-circle-xmark',
+                info: 'fa-circle-info'
+            };
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg border text-xs font-semibold animate-fade-in ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type]} text-sm"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // =====================================================================
+        // INISIALISASI DATABASE AWAL (SEED DATA REALISTIS MTS DARUL MA'ARIF)
+        // =====================================================================
+        function initDatabase() {
+            // 1. Seed Rutinitas Harian Default
+            if (!localStorage.getItem(DB_KEYS.ROUTINES)) {
+                const defaultRoutines = [
+                    { id: 'r1', title: 'Shalat Subuh Berjamaah', category: 'Ibadah Wajib', time: '04:30 - 05:30', desc: 'Shalat Subuh berjamaah di masjid/musholla atau bersama keluarga', requirePhoto: true, active: true },
+                    { id: 'r2', title: 'Shalat Dzuhur Berjamaah', category: 'Ibadah Wajib', time: '12:00 - 13:00', desc: 'Shalat Dzuhur tepat waktu', requirePhoto: true, active: true },
+                    { id: 'r3', title: 'Shalat Ashar Berjamaah', category: 'Ibadah Wajib', time: '15:15 - 16:15', desc: 'Shalat Ashar tepat waktu', requirePhoto: true, active: true },
+                    { id: 'r4', title: 'Shalat Maghrib Berjamaah', category: 'Ibadah Wajib', time: '18:00 - 18:45', desc: 'Shalat Maghrib berjamaah dilanjutkan dzikir', requirePhoto: true, active: true },
+                    { id: 'r5', title: 'Shalat Isya Berjamaah', category: 'Ibadah Wajib', time: '19:15 - 20:30', desc: 'Shalat Isya berjamaah', requirePhoto: true, active: true },
+                    { id: 'r6', title: 'Membaca Al-Qur\'an / Tadarus', category: 'Al-Qur\'an', time: 'Ba\'da Maghrib / Subuh', desc: 'Minimal membaca 1 halaman atau murojaah hafalan juz 30', requirePhoto: true, active: true },
+                    { id: 'r7', title: 'Membantu Orang Tua di Rumah', category: 'Adab & Bakti', time: 'Pagi / Sore', desc: 'Membersihkan kamar, menyapu, mencuci piring, atau membantu pekerjaan rumah', requirePhoto: true, active: true },
+                    { id: 'r8', title: 'Belajar & Mengerjakan Tugas Sekolah', category: 'Belajar', time: '19:30 - 21:00', desc: 'Mengulang pelajaran madrasah dan menyiapkan buku untuk besok', requirePhoto: true, active: true }
+                ];
+                localStorage.setItem(DB_KEYS.ROUTINES, JSON.stringify(defaultRoutines));
+            }
+
+            // 2. Seed Contoh Santri (Agar Admin langsung punya data & bisa dicoba)
+            if (!localStorage.getItem(DB_KEYS.SANTRI)) {
+                const defaultSantri = [
+                    {
+                        id: 's1',
+                        nama: 'Ahmad Fauzan',
+                        kelas: 'VIII A',
+                        nisn: '0098712341',
+                        wa: '081234567890',
+                        email: 'fauzan@darulmaarif.sch.id',
+                        ortu: 'Bpk. H. Sulaiman',
+                        password: DEFAULT_SANTRI_PASSWORD,
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 's2',
+                        nama: 'Siti Aisyah Putri',
+                        kelas: 'VII B',
+                        nisn: '0109823412',
+                        wa: '085678901234',
+                        email: 'aisyah@darulmaarif.sch.id',
+                        ortu: 'Ibu Hj. Fatimah',
+                        password: DEFAULT_SANTRI_PASSWORD,
+                        createdAt: new Date().toISOString()
+                    }
+                ];
+                localStorage.setItem(DB_KEYS.SANTRI, JSON.stringify(defaultSantri));
+            }
+
+            // 3. Seed Contoh Log Absensi Hari Ini (Dengan gambar SVG placeholder ringan)
+            if (!localStorage.getItem(DB_KEYS.LOGS)) {
+                const today = getTodayISO();
+                const sampleSvgPhoto = "data:image/svg+xml;utf8," + encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+                        <rect width="400" height="300" fill="#065f46"/>
+                        <circle cx="200" cy="115" r="45" fill="#fbbf24" opacity="0.9"/>
+                        <text x="200" y="195" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">BUKTI KEGIATAN SANTRI</text>
+                        <text x="200" y="222" font-family="sans-serif" font-size="13" fill="#d1fae5" text-anchor="middle">MTs Darul Ma'arif - Terverifikasi GPS</text>
+                    </svg>`
+                );
+
+                const defaultLogs = [
+                    {
+                        id: 'log1',
+                        santriId: 's1',
+                        santriNama: 'Ahmad Fauzan',
+                        santriKelas: 'VIII A',
+                        routineId: 'r1',
+                        routineTitle: 'Shalat Subuh Berjamaah',
+                        date: today,
+                        time: '04:52',
+                        notes: 'Berjamaah di Masjid Jami Darul Ma\'arif',
+                        lat: '-6.914744',
+                        lng: '107.609810',
+                        photo: sampleSvgPhoto
+                    },
+                    {
+                        id: 'log2',
+                        santriId: 's2',
+                        santriNama: 'Siti Aisyah Putri',
+                        santriKelas: 'VII B',
+                        routineId: 'r6',
+                        routineTitle: 'Membaca Al-Qur\'an / Tadarus',
+                        date: today,
+                        time: '05:30',
+                        notes: 'Membaca Surah Al-Waqi\'ah ayat 1-96',
+                        lat: '-6.917464',
+                        lng: '107.619125',
+                        photo: sampleSvgPhoto
+                    }
+                ];
+                localStorage.setItem(DB_KEYS.LOGS, JSON.stringify(defaultLogs));
+            }
+        }
+
+        // Helper Get/Set DB
+        const getSantriList = () => JSON.parse(localStorage.getItem(DB_KEYS.SANTRI) || '[]');
+        const saveSantriList = (list) => localStorage.setItem(DB_KEYS.SANTRI, JSON.stringify(list));
+
+        const getRoutinesList = () => JSON.parse(localStorage.getItem(DB_KEYS.ROUTINES) || '[]');
+        const saveRoutinesList = (list) => localStorage.setItem(DB_KEYS.ROUTINES, JSON.stringify(list));
+
+        const getLogsList = () => JSON.parse(localStorage.getItem(DB_KEYS.LOGS) || '[]');
+        const saveLogsList = (list) => localStorage.setItem(DB_KEYS.LOGS, JSON.stringify(list));
+
+        function resetDemoDatabase() {
+            localStorage.removeItem(DB_KEYS.SANTRI);
+            localStorage.removeItem(DB_KEYS.ROUTINES);
+            localStorage.removeItem(DB_KEYS.LOGS);
+            initDatabase();
+            renderAdminAll();
+            showToast('Database contoh berhasil di-reset ulang!', 'success');
+        }
+
+        // =====================================================================
+        // NAVIGASI MODE UTAMA (SANTRI VS ADMIN)
+        // =====================================================================
+        function switchAppMode(mode) {
+            const viewSantri = document.getElementById('view-santri');
+            const viewAdmin = document.getElementById('view-admin');
+            const btnSantri = document.getElementById('btn-mode-santri');
+            const btnAdmin = document.getElementById('btn-mode-admin');
+
+            if (mode === 'santri') {
+                viewSantri.classList.remove('hidden');
+                viewAdmin.classList.add('hidden');
+                btnSantri.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-white text-madrasah-900 shadow-sm';
+                btnAdmin.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-madrasah-100 hover:text-white';
+                checkSantriRouting();
+            } else {
+                viewSantri.classList.add('hidden');
+                viewAdmin.classList.remove('hidden');
+                btnAdmin.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 bg-white text-madrasah-900 shadow-sm';
+                btnSantri.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 text-madrasah-100 hover:text-white';
+                checkAdminRouting();
+            }
+        }
+
+        // =====================================================================
+        // ALUR REGISTRASI, LOGIN & DASHBOARD SANTRI
+        // =====================================================================
+        function checkSantriRouting() {
+            const loggedSantriId = localStorage.getItem(DB_KEYS.SESSION_SANTRI);
+            const hasVisitedBefore = localStorage.getItem('mts_dm_visited');
+
+            if (loggedSantriId) {
+                const santri = getSantriList().find(s => s.id === loggedSantriId);
+                if (santri) {
+                    renderSantriDashboard(santri);
+                    showSantriScreen('dashboard');
+                    return;
+                } else {
+                    localStorage.removeItem(DB_KEYS.SESSION_SANTRI);
+                }
+            }
+
+            // Kunjungan pertama diarahkan ke Registrasi Awal; kunjungan kedua dst ke Login
+            if (!hasVisitedBefore) {
+                localStorage.setItem('mts_dm_visited', 'true');
+                showSantriScreen('register');
+            } else {
+                showSantriScreen('login');
+            }
+        }
+
+        function showSantriScreen(screen) {
+            const screens = ['register', 'reg-success', 'login', 'dashboard'];
+            screens.forEach(s => {
+                const el = document.getElementById(`santri-${s}-screen`);
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(`santri-${screen}-screen`);
+            if (target) target.classList.remove('hidden');
+        }
+
+        // Handle Pendaftaran Santri Baru
+        function handleRegister(e) {
+            e.preventDefault();
+            const nama = document.getElementById('reg-nama').value.trim();
+            const kelas = document.getElementById('reg-kelas').value;
+            const nisn = document.getElementById('reg-nisn').value.trim();
+            const wa = document.getElementById('reg-wa').value.trim();
+            const email = document.getElementById('reg-email').value.trim().toLowerCase();
+            const ortu = document.getElementById('reg-ortu').value.trim();
+
+            const list = getSantriList();
+            const exists = list.some(s => s.wa === wa || s.email === email);
+            if (exists) {
+                showToast('No. WhatsApp atau Email sudah terdaftar! Silakan langsung login.', 'warning');
+                showSantriScreen('login');
+                document.getElementById('login-identifier').value = wa;
+                return;
+            }
+
+            const newSantri = {
+                id: 's_' + Date.now(),
+                nama,
+                kelas,
+                nisn,
+                wa,
+                email,
+                ortu,
+                password: DEFAULT_SANTRI_PASSWORD,
+                createdAt: new Date().toISOString()
+            };
+
+            list.push(newSantri);
+            saveSantriList(list);
+            newlyRegisteredSantri = newSantri;
+
+            // Tampilkan Kartu Akun Berhasil Dibuat
+            document.getElementById('card-reg-nama').textContent = `${nama} (${kelas})`;
+            document.getElementById('card-reg-user').textContent = `${wa} / ${email}`;
+            document.getElementById('card-reg-pass').textContent = DEFAULT_SANTRI_PASSWORD;
+
+            document.getElementById('form-register').reset();
+            showSantriScreen('reg-success');
+            showToast('Biodata berhasil disimpan!', 'success');
+        }
+
+        function copyDefaultPassword() {
+            const tempInput = document.createElement('input');
+            tempInput.value = DEFAULT_SANTRI_PASSWORD;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            showToast('Password default (santri123) disalin!', 'info');
+        }
+
+        function proceedAfterRegister() {
+            if (newlyRegisteredSantri) {
+                localStorage.setItem(DB_KEYS.SESSION_SANTRI, newlyRegisteredSantri.id);
+                renderSantriDashboard(newlyRegisteredSantri);
+                showSantriScreen('dashboard');
+                // Otomatis munculkan modal saran ganti password
+                setTimeout(() => openChangePasswordModal(), 600);
+            } else {
+                showSantriScreen('login');
+            }
+        }
+
+        // Handle Login Santri
+        function handleLogin(e) {
+            e.preventDefault();
+            const identifier = document.getElementById('login-identifier').value.trim().toLowerCase();
+            const password = document.getElementById('login-password').value;
+
+            const santri = getSantriList().find(s =>
+                (s.wa.toLowerCase() === identifier || s.email.toLowerCase() === identifier) &&
+                s.password === password
+            );
+
+            if (!santri) {
+                showToast('No. WA/Email atau Password salah!', 'error');
+                return;
+            }
+
+            localStorage.setItem(DB_KEYS.SESSION_SANTRI, santri.id);
+            document.getElementById('form-login').reset();
+            renderSantriDashboard(santri);
+            showSantriScreen('dashboard');
+            showToast(`Ahlan wa Sahlan, ${santri.nama}!`, 'success');
+
+            // Jika masih memakai password default, munculkan saran ganti password
+            if (santri.password === DEFAULT_SANTRI_PASSWORD) {
+                setTimeout(() => openChangePasswordModal(), 500);
+            }
+        }
+
+        function fillDemoLogin(wa, pass) {
+            document.getElementById('login-identifier').value = wa;
+            document.getElementById('login-password').value = pass;
+            showToast('Akun demo diisi. Klik "Masuk Sekarang".', 'info');
+        }
+
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        function handleSantriLogout() {
+            localStorage.removeItem(DB_KEYS.SESSION_SANTRI);
+            showSantriScreen('login');
+            showToast('Anda telah keluar dari akun santri.', 'info');
+        }
+
+        // Ganti Password Santri
+        function openChangePasswordModal() {
+            document.getElementById('modal-change-password').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('modal-change-password').classList.add('hidden');
+            document.getElementById('new-santri-pass').value = '';
+            document.getElementById('confirm-santri-pass').value = '';
+        }
+
+        function handleUpdatePassword(e) {
+            e.preventDefault();
+            const newPass = document.getElementById('new-santri-pass').value;
+            const confirmPass = document.getElementById('confirm-santri-pass').value;
+
+            if (newPass !== confirmPass) {
+                showToast('Konfirmasi password tidak cocok!', 'error');
+                return;
+            }
+            if (newPass === DEFAULT_SANTRI_PASSWORD) {
+                showToast('Gunakan password baru yang berbeda dari default!', 'warning');
+                return;
+            }
+
+            const santriId = localStorage.getItem(DB_KEYS.SESSION_SANTRI);
+            const list = getSantriList();
+            const idx = list.findIndex(s => s.id === santriId);
+            if (idx !== -1) {
+                list[idx].password = newPass;
+                saveSantriList(list);
+                closeChangePasswordModal();
+                renderSantriDashboard(list[idx]);
+                showToast('Password baru berhasil disimpan!', 'success');
+            }
+        }
+
+        // =====================================================================
+        // RENDER DASHBOARD & KEGIATAN HARIAN SANTRI
+        // =====================================================================
+        function renderSantriDashboard(santri) {
+            // Inisial Nama
+            const initials = santri.nama.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            document.getElementById('dash-avatar').textContent = initials;
+            document.getElementById('dash-nama').textContent = santri.nama;
+            document.getElementById('dash-kelas').textContent = santri.kelas;
+            document.getElementById('dash-wa').innerHTML = `<i class="fa-brands fa-whatsapp mr-1"></i>${santri.wa}`;
+            document.getElementById('dash-date').textContent = formatTanggalIndo(getTodayISO());
+
+            // Banner Peringatan Password Default
+            const warningEl = document.getElementById('default-pass-warning');
+            if (santri.password === DEFAULT_SANTRI_PASSWORD) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+
+            // Hitung Progress Harian
+            const today = getTodayISO();
+            const activeRoutines = getRoutinesList().filter(r => r.active);
+            const todayLogs = getLogsList().filter(l => l.santriId === santri.id && l.date === today);
+
+            const completedCount = activeRoutines.filter(r => todayLogs.some(l => l.routineId === r.id)).length;
+            const totalCount = activeRoutines.length;
+            const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+            document.getElementById('dash-progress-text').textContent = `${completedCount} / ${totalCount} Selesai (${pct}%)`;
+            document.getElementById('dash-progress-bar').style.width = `${pct}%`;
+
+            // Render Daftar Rutinitas
+            const container = document.getElementById('content-santri-kegiatan');
+            container.innerHTML = '';
+
+            if (activeRoutines.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">Belum ada jadwal rutinitas aktif dari Admin.</div>`;
+            } else {
+                activeRoutines.forEach(routine => {
+                    const log = todayLogs.find(l => l.routineId === routine.id);
+                    const isDone = !!log;
+
+                    const categoryIcons = {
+                        'Ibadah Wajib': 'fa-mosque text-emerald-600 bg-emerald-50',
+                        'Ibadah Sunnah': 'fa-hands-praying text-teal-600 bg-teal-50',
+                        'Al-Qur\'an': 'fa-book-quran text-amber-600 bg-amber-50',
+                        'Adab & Bakti': 'fa-heart text-rose-600 bg-rose-50',
+                        'Belajar': 'fa-graduation-cap text-blue-600 bg-blue-50'
+                    };
+                    const iconStyle = categoryIcons[routine.category] || 'fa-star text-madrasah-600 bg-madrasah-50';
+
+                    const card = document.createElement('div');
+                    card.className = `p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                        isDone
+                            ? 'bg-emerald-50/60 border-emerald-200'
+                            : 'bg-white border-slate-200 hover:border-madrasah-400 shadow-sm cursor-pointer'
+                    }`;
+
+                    if (!isDone) {
+                        card.onclick = () => openAbsensiModal(routine);
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconStyle}">
+                                <i class="fa-solid ${iconStyle.split(' ')[0]} text-lg"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${routine.category}</span>
+                                    <span class="text-[10px] text-slate-400"><i class="fa-regular fa-clock mr-0.5"></i>${routine.time}</span>
+                                </div>
+                                <h4 class="font-bold text-sm text-slate-800 truncate mt-0.5">${routine.title}</h4>
+                                <p class="text-[11px] text-slate-500 truncate">${isDone ? `Selesai pukul ${log.time} • GPS Terlampir` : routine.desc}</p>
+                            </div>
+                        </div>
+                        <div class="shrink-0">
+                            ${isDone
+                                ? `<span class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 text-white text-[11px] font-bold shadow-sm"><i class="fa-solid fa-check"></i> Selesai</span>`
+                                : `<button type="button" class="px-3 py-1.5 rounded-xl bg-madrasah-50 hover:bg-madrasah-600 text-madrasah-700 hover:text-white border border-madrasah-200 text-xs font-bold transition">Absen</button>`
+                            }
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            // Render Tab Riwayat Santri
+            renderSantriHistory(santri.id);
+        }
+
+        function switchSantriTab(tab) {
+            const tabKeg = document.getElementById('tab-santri-kegiatan');
+            const tabRiw = document.getElementById('tab-santri-riwayat');
+            const conKeg = document.getElementById('content-santri-kegiatan');
+            const conRiw = document.getElementById('content-santri-riwayat');
+
+            if (tab === 'kegiatan') {
+                tabKeg.className = 'py-2 rounded-lg text-xs font-bold bg-white text-madrasah-800 shadow-sm transition';
+                tabRiw.className = 'py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-800 transition';
+                conKeg.classList.remove('hidden');
+                conRiw.classList.add('hidden');
+            } else {
+                tabRiw.className = 'py-2 rounded-lg text-xs font-bold bg-white text-madrasah-800 shadow-sm transition';
+                tabKeg.className = 'py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-800 transition';
+                conRiw.classList.remove('hidden');
+                conKeg.classList.add('hidden');
+            }
+        }
+
+        function renderSantriHistory(santriId) {
+            const logs = getLogsList().filter(l => l.santriId === santriId).reverse();
+            const container = document.getElementById('content-santri-riwayat');
+            container.innerHTML = '';
+
+            if (logs.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-xs text-slate-400">Belum ada riwayat absensi tercatat.</div>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex gap-3';
+                item.innerHTML = `
+                    <img src="${log.photo}" onclick="openPhotoViewer('${log.id}')" alt="Bukti" class="w-16 h-16 rounded-xl object-cover border border-slate-200 cursor-pointer shrink-0">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex justify-between items-start gap-1">
+                            <h5 class="font-bold text-xs text-slate-800 truncate">${log.routineTitle}</h5>
+                            <span class="text-[10px] text-slate-400 shrink-0">${log.date} • ${log.time}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mt-1 line-clamp-2">${log.notes || 'Tidak ada catatan tambahan.'}</p>
+                        <div class="mt-1.5 flex items-center gap-2 text-[10px]">
+                            <a href="https://www.google.com/maps?q=${log.lat},${log.lng}" target="_blank" class="text-madrasah-700 font-semibold hover:underline">
+                                <i class="fa-solid fa-location-dot text-red-500 mr-0.5"></i> ${log.lat}, ${log.lng}
+                            </a>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // =====================================================================
+        // MODAL ABSENSI: KAMERA FOTO (KOMPRESI CANVAS) & GPS REAL-TIME
+        // =====================================================================
+        function openAbsensiModal(routine) {
+            currentPhotoBase64 = '';
+            document.getElementById('absen-routine-id').value = routine.id;
+            document.getElementById('modal-absen-kategori').textContent = routine.category;
+            document.getElementById('modal-absen-judul').textContent = routine.title;
+            document.getElementById('absen-notes').value = '';
+            document.getElementById('absen-photo-input').value = '';
+
+            document.getElementById('photo-placeholder').classList.remove('hidden');
+            document.getElementById('photo-preview-container').classList.add('hidden');
+
+            document.getElementById('modal-absensi').classList.remove('hidden');
+            fetchGPSLocation();
+        }
+
+        function closeAbsensiModal() {
+            document.getElementById('modal-absensi').classList.add('hidden');
+        }
+
+        // Ambil Koordinat GPS Asli Perangkat
+        function fetchGPSLocation() {
+            const statusBox = document.getElementById('gps-status-box');
+            const latInput = document.getElementById('absen-lat');
+            const lngInput = document.getElementById('absen-lng');
+
+            statusBox.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-madrasah-600"></i><span>Mengunci titik koordinat GPS...</span>`;
+
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lng = position.coords.longitude.toFixed(6);
+                        const acc = Math.round(position.coords.accuracy);
+                        latInput.value = lat;
+                        lngInput.value = lng;
+                        statusBox.innerHTML = `
+                            <div class="flex items-center justify-between w-full">
+                                <span class="text-emerald-700 font-bold"><i class="fa-solid fa-satellite-dish mr-1"></i> ${lat}, ${lng} (±${acc}m)</span>
+                                <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold">Cek Peta</a>
+                            </div>
+                        `;
+                    },
+                    (error) => {
+                        // Fallback jika izin GPS ditolak atau berjalan di sandbox tanpa sensor GPS
+                        const fallbackLat = '-6.914744';
+                        const fallbackLng = '107.609810';
+                        latInput.value = fallbackLat;
+                        lngInput.value = fallbackLng;
+                        statusBox.innerHTML = `
+                            <div class="text-[11px] text-amber-700">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Izin GPS browser dibatasi. Menggunakan titik lokasi default Madrasah (${fallbackLat}, ${fallbackLng}).
+                            </div>
+                        `;
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            } else {
+                latInput.value = '-6.914744';
+                lngInput.value = '107.609810';
+                statusBox.innerHTML = `<span class="text-amber-700">Browser tidak mendukung Geolocation.</span>`;
+            }
+        }
+
+        // Tangkap & Kompresi Foto Kamera via HTML5 Canvas
+        function handlePhotoCapture(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 640;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
+                    canvas.height = img.width > MAX_WIDTH ? img.height * scaleSize : img.height;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Tambah Watermark Waktu & GPS pada Foto Bukti
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                    ctx.fillRect(0, canvas.height - 28, canvas.width, 28);
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.font = 'bold 11px sans-serif';
+                    const lat = document.getElementById('absen-lat').value;
+                    const lng = document.getElementById('absen-lng').value;
+                    const timeNow = new Date().toLocaleString('id-ID');
+                    ctx.fillText(`MTs Darul Ma'arif • ${timeNow} • GPS: ${lat}, ${lng}`, 10, canvas.height - 10);
+
+                    currentPhotoBase64 = canvas.toDataURL('image/jpeg', 0.72);
+
+                    document.getElementById('photo-preview-img').src = currentPhotoBase64;
+                    document.getElementById('photo-placeholder').classList.add('hidden');
+                    document.getElementById('photo-preview-container').classList.remove('hidden');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Submit Absensi ke Database
+        function handleSubmitAbsensi(e) {
+            e.preventDefault();
+            const routineId = document.getElementById('absen-routine-id').value;
+            const routine = getRoutinesList().find(r => r.id === routineId);
+            const santriId = localStorage.getItem(DB_KEYS.SESSION_SANTRI);
+            const santri = getSantriList().find(s => s.id === santriId);
+
+            if (!santri || !routine) return;
+
+            if (routine.requirePhoto && !currentPhotoBase64) {
+                showToast('Harap ambil bukti foto kegiatan terlebih dahulu!', 'warning');
+                return;
+            }
+
+            const now = new Date();
+            const timeStr = now.toTimeString().slice(0, 5);
+            const lat = document.getElementById('absen-lat').value || '-6.914744';
+            const lng = document.getElementById('absen-lng').value || '107.609810';
+            const notes = document.getElementById('absen-notes').value.trim();
+
+            const newLog = {
+                id: 'log_' + Date.now(),
+                santriId: santri.id,
+                santriNama: santri.nama,
+                santriKelas: santri.kelas,
+                routineId: routine.id,
+                routineTitle: routine.title,
+                date: getTodayISO(),
+                time: timeStr,
+                notes,
+                lat,
+                lng,
+                photo: currentPhotoBase64
+            };
+
+            const logs = getLogsList();
+            logs.push(newLog);
+            saveLogsList(logs);
+
+            closeAbsensiModal();
+            renderSantriDashboard(santri);
+            showToast(`Alhamdulillah! Absensi "${routine.title}" tersimpan.`, 'success');
+        }
+
+        // Modal Viewer Foto Bukti
+        function openPhotoViewer(logId) {
+            const log = getLogsList().find(l => l.id === logId);
+            if (!log) return;
+
+            document.getElementById('viewer-title').textContent = `${log.routineTitle} - ${log.santriNama} (${log.santriKelas})`;
+            document.getElementById('viewer-img').src = log.photo;
+            document.getElementById('viewer-meta').textContent = `Waktu: ${log.date} pukul ${log.time} | Catatan: ${log.notes || '-'}`;
+            document.getElementById('viewer-gps').innerHTML = `Koordinat GPS: <a href="https://www.google.com/maps?q=${log.lat},${log.lng}" target="_blank" class="text-madrasah-700 font-bold underline">${log.lat}, ${log.lng} (Buka Google Maps)</a>`;
+            document.getElementById('modal-photo-viewer').classList.remove('hidden');
+        }
+
+        function closePhotoViewer() {
+            document.getElementById('modal-photo-viewer').classList.add('hidden');
+        }
+
+        // =====================================================================
+        // PORTAL ADMIN: LOGIN, REKAP LAPORAN, CRUD RUTINITAS, DATA SANTRI
+        // =====================================================================
+        function checkAdminRouting() {
+            const isAdminLogged = localStorage.getItem(DB_KEYS.SESSION_ADMIN) === 'true';
+            if (isAdminLogged) {
+                document.getElementById('admin-login-screen').classList.add('hidden');
+                document.getElementById('admin-dashboard-screen').classList.remove('hidden');
+                renderAdminAll();
+            } else {
+                document.getElementById('admin-login-screen').classList.remove('hidden');
+                document.getElementById('admin-dashboard-screen').classList.add('hidden');
+            }
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === DEFAULT_ADMIN_PASSWORD) {
+                localStorage.setItem(DB_KEYS.SESSION_ADMIN, 'true');
+                document.getElementById('admin-pass-input').value = '';
+                checkAdminRouting();
+                showToast('Berhasil masuk ke Portal Admin!', 'success');
+            } else {
+                showToast('Password Admin salah! (Gunakan: admin123)', 'error');
+            }
+        }
+
+        function handleAdminLogout() {
+            localStorage.removeItem(DB_KEYS.SESSION_ADMIN);
+            checkAdminRouting();
+            showToast('Keluar dari Portal Admin.', 'info');
+        }
+
+        function switchAdminTab(tab) {
+            const tabs = ['laporan', 'rutinitas', 'santri'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`admin-tab-${t}`);
+                const content = document.getElementById(`admin-content-${t}`);
+                if (t === tab) {
+                    btn.className = 'px-4 py-2.5 text-xs sm:text-sm font-bold border-b-2 border-madrasah-700 text-madrasah-800 whitespace-nowrap';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        function renderAdminAll() {
+            const santriList = getSantriList();
+            const logsList = getLogsList();
+            const routinesList = getRoutinesList();
+            const today = getTodayISO();
+
+            document.getElementById('stat-total-santri').textContent = santriList.length;
+            document.getElementById('stat-absen-hari-ini').textContent = logsList.filter(l => l.date === today).length;
+            document.getElementById('stat-total-log').textContent = logsList.length;
+            document.getElementById('stat-total-rutinitas').textContent = routinesList.filter(r => r.active).length;
+
+            document.getElementById('print-date-footer').textContent = `Dicetak pada: ${formatTanggalIndo(today)}`;
+
+            renderAdminReports();
+            renderAdminRoutines();
+            renderAdminSantriTable();
+        }
+
+        // 1. Render Laporan & Filter Admin
+        function getFilteredLogs() {
+            const fDate = document.getElementById('filter-tanggal').value;
+            const fKelas = document.getElementById('filter-kelas').value;
+            const fNama = document.getElementById('filter-nama').value.trim().toLowerCase();
+
+            return getLogsList().filter(log => {
+                const matchDate = !fDate || log.date === fDate;
+                const matchKelas = fKelas === 'ALL' || log.santriKelas === fKelas;
+                const matchNama = !fNama || log.santriNama.toLowerCase().includes(fNama);
+                return matchDate && matchKelas && matchNama;
+            }).reverse();
+        }
+
+        function renderAdminReports() {
+            const filtered = getFilteredLogs();
+            const tbody = document.getElementById('admin-report-tbody');
+            tbody.innerHTML = '';
+
+            // Update Subtitle Cetak
+            const fDate = document.getElementById('filter-tanggal').value;
+            const fKelas = document.getElementById('filter-kelas').value;
+            document.getElementById('print-subtitle').textContent = `Periode Tanggal: ${fDate ? formatTanggalIndo(fDate) : 'Semua Tanggal'} | Kelas: ${fKelas === 'ALL' ? 'Semua Kelas' : fKelas}`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">Tidak ada data absensi yang sesuai filter.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach((log, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-3 border border-slate-200 text-center font-semibold">${idx + 1}</td>
+                    <td class="p-3 border border-slate-200 whitespace-nowrap">
+                        <span class="font-bold text-slate-800 block">${log.date}</span>
+                        <span class="text-[11px] text-slate-500">Pukul ${log.time} WIB</span>
+                    </td>
+                    <td class="p-3 border border-slate-200 font-bold text-slate-800">${log.santriNama}</td>
+                    <td class="p-3 border border-slate-200 text-center">
+                        <span class="px-2 py-0.5 bg-madrasah-50 text-madrasah-800 font-bold rounded text-[11px]">${log.santriKelas}</span>
+                    </td>
+                    <td class="p-3 border border-slate-200 font-semibold text-madrasah-900">${log.routineTitle}</td>
+                    <td class="p-3 border border-slate-200 text-slate-600 max-w-xs">${log.notes || '-'}</td>
+                    <td class="p-3 border border-slate-200 text-center whitespace-nowrap">
+                        <a href="https://www.google.com/maps?q=${log.lat},${log.lng}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:underline font-medium">
+                            <i class="fa-solid fa-location-dot text-red-500"></i>
+                            <span>${log.lat}, ${log.lng}</span>
+                        </a>
+                    </td>
+                    <td class="p-3 border border-slate-200 text-center">
+                        ${log.photo
+                            ? `<img src="${log.photo}" onclick="openPhotoViewer('${log.id}')" alt="Bukti" class="w-12 h-12 object-cover rounded-lg mx-auto border border-slate-300 cursor-pointer hover:scale-105 transition">`
+                            : `<span class="text-slate-400">-</span>`
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function resetReportFilters() {
+            document.getElementById('filter-tanggal').value = '';
+            document.getElementById('filter-kelas').value = 'ALL';
+            document.getElementById('filter-nama').value = '';
+            renderAdminReports();
+        }
+
+        // Export Laporan ke CSV (Siap buka di Microsoft Excel)
+        function exportToCSV() {
+            const data = getFilteredLogs();
+            if (data.length === 0) {
+                showToast('Tidak ada data untuk diexport!', 'warning');
+                return;
+            }
+
+            const headers = ['No', 'Tanggal', 'Jam', 'Nama Santri', 'Kelas', 'Kegiatan Rutinitas', 'Catatan', 'Latitude', 'Longitude', 'Link Google Maps'];
+            const rows = data.map((log, i) => [
+                i + 1,
+                log.date,
+                log.time,
+                `"${log.santriNama}"`,
+                `"${log.santriKelas}"`,
+                `"${log.routineTitle}"`,
+                `"${(log.notes || '-').replace(/"/g, '""')}"`,
+                log.lat,
+                log.lng,
+                `"https://www.google.com/maps?q=${log.lat},${log.lng}"`
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `Laporan_Absensi_Santri_MTs_Darul_Maarif_${getTodayISO()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('File CSV berhasil diunduh!', 'success');
+        }
+
+        // 2. CRUD Kelola Rutinitas Harian
+        function renderAdminRoutines() {
+            const list = getRoutinesList();
+            const container = document.getElementById('admin-routines-list');
+            container.innerHTML = '';
+
+            list.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `p-3.5 rounded-2xl border flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 ${item.active ? 'bg-white border-slate-200' : 'bg-slate-100 border-slate-200 opacity-60'}`;
+                div.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 bg-madrasah-50 text-madrasah-800 text-[10px] font-bold rounded">${item.category}</span>
+                            <span class="text-[11px] text-slate-500"><i class="fa-regular fa-clock mr-1"></i>${item.time}</span>
+                            ${!item.active ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded">Nonaktif</span>' : ''}
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-800 mt-1">${item.title}</h4>
+                        <p class="text-xs text-slate-500">${item.desc || '-'}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="toggleRoutineStatus('${item.id}')" title="Aktif/Nonaktifkan" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${item.active ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}">
+                            ${item.active ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+                        <button onclick="editRoutine('${item.id}')" title="Edit" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="deleteRoutine('${item.id}')" title="Hapus" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function handleSaveRoutine(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-routine-id').value;
+            const title = document.getElementById('routine-title').value.trim();
+            const category = document.getElementById('routine-category').value;
+            const time = document.getElementById('routine-time').value.trim();
+            const desc = document.getElementById('routine-desc').value.trim();
+            const requirePhoto = document.getElementById('routine-require-photo').checked;
+
+            const list = getRoutinesList();
+
+            if (editId) {
+                const idx = list.findIndex(r => r.id === editId);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], title, category, time, desc, requirePhoto };
+                    showToast('Kegiatan berhasil diperbarui!', 'success');
+                }
+            } else {
+                list.push({
+                    id: 'r_' + Date.now(),
+                    title,
+                    category,
+                    time,
+                    desc,
+                    requirePhoto,
+                    active: true
+                });
+                showToast('Kegiatan rutinitas baru ditambahkan!', 'success');
+            }
+
+            saveRoutinesList(list);
+            resetRoutineForm();
+            renderAdminAll();
+        }
+
+        function editRoutine(id) {
+            const item = getRoutinesList().find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('edit-routine-id').value = item.id;
+            document.getElementById('routine-title').value = item.title;
+            document.getElementById('routine-category').value = item.category;
+            document.getElementById('routine-time').value = item.time;
+            document.getElementById('routine-desc').value = item.desc;
+            document.getElementById('routine-require-photo').checked = item.requirePhoto;
+
+            document.getElementById('form-rutinitas-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-blue-600"></i> Edit Kegiatan Rutinitas`;
+            document.getElementById('btn-cancel-edit-routine').classList.remove('hidden');
+        }
+
+        function resetRoutineForm() {
+            document.getElementById('form-rutinitas').reset();
+            document.getElementById('edit-routine-id').value = '';
+            document.getElementById('form-rutinitas-title').innerHTML = `<i class="fa-solid fa-plus-circle text-madrasah-600"></i> Tambah Kegiatan Rutinitas Baru`;
+            document.getElementById('btn-cancel-edit-routine').classList.add('hidden');
+        }
+
+        function toggleRoutineStatus(id) {
+            const list = getRoutinesList();
+            const idx = list.findIndex(r => r.id === id);
+            if (idx !== -1) {
+                list[idx].active = !list[idx].active;
+                saveRoutinesList(list);
+                renderAdminAll();
+                showToast('Status kegiatan diperbarui.', 'info');
+            }
+        }
+
+        function deleteRoutine(id) {
+            const list = getRoutinesList().filter(r => r.id !== id);
+            saveRoutinesList(list);
+            renderAdminAll();
+            showToast('Kegiatan dihapus dari daftar.', 'warning');
+        }
+
+        // 3. Kelola Data Santri & Reset Password
+        function renderAdminSantriTable() {
+            const list = getSantriList();
+            const tbody = document.getElementById('admin-santri-tbody');
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada santri terdaftar.</td></tr>`;
+                return;
+            }
+
+            list.forEach(s => {
+                const isDefaultPass = s.password === DEFAULT_SANTRI_PASSWORD;
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-800">${s.nama}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 font-bold rounded">${s.kelas}</span></td>
+                    <td class="p-3 text-emerald-700 font-medium">${s.wa}</td>
+                    <td class="p-3 text-slate-600">${s.email}</td>
+                    <td class="p-3 text-slate-600">${s.ortu}</td>
+                    <td class="p-3">
+                        ${isDefaultPass
+                            ? `<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded text-[11px] font-semibold">Default (santri123)</span>`
+                            : `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[11px] font-semibold">Sudah Diganti</span>`
+                        }
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <button onclick="resetSantriPassword('${s.id}')" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[11px] font-bold transition mr-1">
+                            Reset Pass
+                        </button>
+                        <button onclick="deleteSantri('${s.id}')" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-[11px] font-bold transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function resetSantriPassword(id) {
+            const list = getSantriList();
+            const idx = list.findIndex(s => s.id === id);
+            if (idx !== -1) {
+                list[idx].password = DEFAULT_SANTRI_PASSWORD;
+                saveSantriList(list);
+                renderAdminSantriTable();
+                showToast(`Password ${list[idx].nama} direset ke "${DEFAULT_SANTRI_PASSWORD}".`, 'success');
+            }
+        }
+
+        function deleteSantri(id) {
+            const list = getSantriList().filter(s => s.id !== id);
+            saveSantriList(list);
+            renderAdminAll();
+            showToast('Data santri dihapus.', 'warning');
+        }
+
+        // Jalankan Inisialisasi Saat Halaman Dimuat
+        window.onload = function () {
+            initDatabase();
+            switchAppMode('santri');
+        };
+    </script>
+</body>
+</html>
